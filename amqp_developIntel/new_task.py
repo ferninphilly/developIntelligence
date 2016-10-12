@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import pika
 import sys
 
@@ -17,3 +16,4 @@ channel.basic_publish(exchange='',
                       ))
 print(" [x] Sent %r" % message)
 connection.close()
+

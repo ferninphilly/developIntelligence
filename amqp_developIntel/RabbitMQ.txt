@@ -1,0 +1,43 @@
+
+#Install pika for RabbitMQ
+pip install pika
+
+#open python (I'd recommend utilizing iPython):
+ipython
+
+#Section one: Open up command line and get a list of queues:
+sudo rabbitmqctl list_queues
+
+python send.py
+
+#in a separate tab:
+python receive.py
+
+#Show all queues with unacknowledged messages:
+sudo rabbitmqctl list_queues name messages_ready messages_unacknowledged
+
+#Send these messages (with dots). Make sure at least two workers are open
+python new_task.py First message.
+python new_task.py Second message..
+python new_task.py Third message...
+python new_task.py Fourth message....
+python new_task.py Fifth message.....
+
+#Show all exchanges:
+sudo rabbitmqctl list_exchanges
+
+#Show all bindings:
+rabbitmqctl list_bindings
+
+#Direct logs:
+python receive_logs.py > logs_from_rabbit.log
+python receive_logs.py
+python emit_log.py
+
+#Direct by type:
+python receive_logs_direct.py warning error > logs_from_rabbit.log
+python receive_logs_direct.py info warning error
+python emit_log_direct.py error "Run. Run. Or it will explode."
+
+
+
