@@ -1,0 +1,156 @@
+ELK Stack:
+
+#Section One: ElasticSearch
+	#Installation:
+	ELASTICSEARCH:
+	#	First- please ensure that you have java version 7 or higher installed on your system. Go to the command 
+	#	line and type:
+			java –version
+	# The version MUST be higher than java 7. If it is not please install latest JAVA version here:
+	#	https://java.com/en/download/help/mac_install.xml
+	
+	#MAC OSX: 
+	brew install elasticsearch
+	brew install logstash
+
+	#THE FOLLOWING SECTION CAN BE FOUND AT http://joelabrahamsson.com/elasticsearch-101/!
+
+		#With everything installed navigate to the location where elasticsearch has been deposited: 
+			cd /usr/local/Cellar/elasticsearch/2.x.x
+		#Run elasticsearch:
+			bin/elasticsearch
+
+		#Open up a new CLI tab
+
+		#Put first film insto Elasticsearch:
+		curl -XPUT "http://localhost:9200/films/movie/1" -d' {     
+				"title": "Star Wars",
+			    "director": "George Lucas",   
+				"year": 1977 }'
+
+		#Make sure that the film is there:
+		curl -XGET http://localhost:9200/films/movie/1
+
+		#UPDATE the film
+		curl -XPUT "http://localhost:9200/films/movie/1" -d' {     
+				"title": "Star Wars",
+			    "director": "George Lucas",   
+				"year": 1977,
+				"genres": ["Sci-Fi", "Adventure"]}'
+
+		#Notice the version change when you search(try a search!)
+		#Delete that record:
+		cURL –XDELETE "http://localhost:9200/films/movie/1"
+
+
+
+		#Put multiple films in- please use "films.json"
+
+		#QUERY- let's find ALL films with the word "Titanic" in them
+		curl -XPOST "http://localhost:9200/films/movie/_search/?pretty=True" -d '
+			{"query": { 
+			"query_string":{
+				"query":"Titanic"
+							}
+								}}'
+
+		#All films with the word "The":
+		curl -XPOST "http://localhost:9200/films/movie/_search" -d'{"query":{"query_string":{"query":"The"}}}
+
+		#And finally- let's filter to JUST films from 2010 with the word "the":
+		curl -XPOST "http://localhost:9200/films/movie/_search" -d'
+			{"query":
+					{"filtered":
+						{"query":
+							{"query_string":
+								{"query":"The"}
+									},
+									"filter":
+										{"term":{"releaseYear":2010}
+											}}}}'
+
+	LOGSTASH:
+	#Let's start by starting up logstash:
+	cd /usr/local/Cellar/logstash/2.x.x/
+	bin/logstash -e 'input { stdin { } } output { stdout {} }'
+
+	#Download the file from git and then:
+	mv ~/Downloads/logstash-tutorial.log ~/Documents/tutorial/logstash-20161004.log
+
+	#Let's set up a configuration file. Please download the first-pipeline.conf file
+  input {                                                                         
+      file {                                                                      
+           path => "/Users/fpombeiro/Documents/tutorial/*.log"                     
+           start_position => beginning                                             
+           ignore_older => 0                                                       
+           sincedb_path => "/dev/null"                                             
+       }                                                                           
+   }                                                                               
+   filter {                                                                        
+      grok {                                                                      
+          match => { "message" => "%{COMBINEDAPACHELOG}"}                         
+      }                                                                           
+      geoip {                                                                     
+          source => "clientip"                                                    
+      }                                                                           
+  }                                                                               
+  output {                                                                        
+      elasticsearch {                                                             
+          hosts => [ "localhost:9200" ]                                           
+          index => "apachelogs-%{+YYYY.MM.dd}"                                    
+      }                                                                           
+  }     
+
+		#Config test and then run:
+		bin/logstash -f first-pipeline.conf --configtest
+		bin/logstash -f first-pipeline.conf
+
+		#So let's look at how we are going to parse our data:
+		{
+			"clientip" : "83.149.9.216",
+			"ident" : ,
+			"auth" : ,
+			"timestamp" : "04/Jan/2015:05:13:42 +0000",
+			"verb" : "GET",
+			"request" : "/presentations/logstash-monitorama-2013/images/kibana-search.png",
+			"httpversion" : "HTTP/1.1",
+			"response" : "200",
+			"bytes" : "203023",
+			"referrer" : "http://semicomplete.com/presentations/logstash-monitorama-2013/",
+			"agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36"
+		}
+
+		#Let's see how the data parsed! 
+		#Replace $DATE with Today's date
+		curl -XGET 'localhost:9200/logstash-$DATE/_search?pretty&q=response=200'
+
+		#NGINX: Please download the sample files for NGINX (brew install wget if you do not have it yet)
+		mkdir nginx_ElasticStack_Example
+		cd nginx_ElasticStack_Example
+		wget https://raw.githubusercontent.com/elastic/examples/master/ElasticStack_NGINX/nginx_logstash.conf
+		wget https://raw.githubusercontent.com/elastic/examples/master/ElasticStack_NGINX/nginx_template.json
+		wget https://raw.githubusercontent.com/elastic/examples/master/ElasticStack_NGINX/nginx_kibana.json
+		wget https://raw.githubusercontent.com/elastic/examples/master/ElasticStack_NGINX/nginx_logs
+		
+		#Now let's get data from the logs into elasticsearch:
+		cat nginx_logs | <path_to_logstash_root_dir>/bin/logstash -f nginx_logstash.conf
+		Running http://localhost:9200/nginx_elk_example/_count should return a response a "count":51462
+
+
+		#KIBANA:
+		#Download the latest version of Kibana (do NOT brew install this one! The brew is too many versions back!)
+		#As of 10/5/2016 the version is 4.6.1
+		Go to https://www.elastic.co/downloads/kibana and download as appropriate.
+		mv ~/<kibana-file>.tar.gz ~/path/to/nginx-example
+		gunzip <kibana-file> | tar -zxvf <kibana file>
+		cd <kibana-file>/config/kibana.yml
+
+		#Remove the "#" from the second line in the yml:
+				# The Elasticsearch instance to use for all your queries.
+				# elasticsearch.url: "http://localhost:9200"
+		cd /path/to/kibana
+		cd bin
+		./kibana
+
+		#Now head to http://localhost:5601 and kibana should be up and running!
+
