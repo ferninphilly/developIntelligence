@@ -7,7 +7,7 @@ channel = connection.channel()
 
 channel.queue_declare(queue='task_queue', durable=True)
 
-message = ' '.join(sys.argv[1:]) or "Hello World!"
+message = ' '.join(sys.argv[1:]) or "Rogue One"
 channel.basic_publish(exchange='',
                       routing_key='task_queue',
                       body=message,
