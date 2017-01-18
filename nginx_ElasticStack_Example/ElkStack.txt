@@ -23,20 +23,16 @@ ELK Stack:
 		#Open up a new CLI tab
 
 		#Put first film insto Elasticsearch:
-		curl -XPUT "http://localhost:9200/films/movie/1" -d' {     
-				"title": "Star Wars",
-			    "director": "George Lucas",   
-				"year": 1977 }'
+		curl -XPUT "http://localhost:9200/films/movie/1" -d' { 
+			   "title": "Star Wars",
+			   "director": "George Lucas",   
+			   "year": 1977 }'
 
 		#Make sure that the film is there:
 		curl -XGET http://localhost:9200/films/movie/1
 
 		#UPDATE the film
-		curl -XPUT "http://localhost:9200/films/movie/1" -d' {     
-				"title": "Star Wars",
-			    "director": "George Lucas",   
-				"year": 1977,
-				"genres": ["Sci-Fi", "Adventure"]}'
+		curl -XPUT "http://localhost:9200/films/movie/1" -d' { "title": "Star Wars", "director": "George Lucas", "year": 1977, "genres": ["Sci-Fi", "Adventure"]}'
 
 		#Notice the version change when you search(try a search!)
 		#Delete that record:
