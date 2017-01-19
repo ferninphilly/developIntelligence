@@ -1,0 +1,371 @@
+Elasticsearch 2.x Cheat sheet
+
+Queries
+
+There is two syntax for the basic queries: a simple one on the left, where you can't use any option, and an extended one on the right. Most of the beginner headache with the DSL come from this:
+
+GET _search
+{
+  "query": {
+    "match": {
+      "FIELD": "TEXT"
+    }
+  }
+}
+TO
+GET _search
+{
+  "query": {
+    "match": {
+      "FIELD": {
+        "query": "TEXT",
+        "OPTION": "VALUE"
+      }
+    }
+  }
+}
+Full search example with aggregation, highlight, filter...
+
+          
+GET /_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "title": "smith"
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "match_phrase": {
+            "title": "granny smith"
+          }
+        }
+      ],
+      "filter": [
+        {
+          "exists": {
+            "field": "title"
+          }
+        }
+      ]
+    }
+  },
+  "aggs": {
+    "my_agg": {
+      "terms": {
+        "field": "user",
+        "size": 10
+      }
+    }
+  },
+  "highlight": {
+    "pre_tags": [
+      "<em>"
+    ],
+    "post_tags": [
+      "</em>"
+    ],
+    "fields": {
+      "body": {
+        "number_of_fragments": 1,
+        "fragment_size": 20
+      },
+      "title": {}
+    }
+  },
+  "size": 20,
+  "from": 100,
+  "_source": [
+    "title",
+    "id"
+  ],
+  "sort": [
+    {
+      "_id": {
+        "order": "desc"
+      }
+    }
+  ]
+}
+Common queries
+
+"multi_match": {
+  "query": "Elastic",
+  "fields": ["user.*", "title^3"],
+  "type": "best_fields"
+}
+"bool": {
+  "must": [],
+  "must_not": [],
+  "filter": [],
+  "should": [],
+  "minimum_should_match" : 1
+}
+"range": {
+  "age": {
+    "gte": 10,
+    "lte": 20,
+    "boost": 2
+  }
+}
+QueryString syntax recap
+
+Search in the default _all field:
+
+GET /_search?q=pony
+Complex search with operator and exact phrase search with boost:
+
+GET /_search?q=title:(joli OR code) AND author:"Damien Alexandre"^2
+Search with wildcard and special queries:
+
+GET /_search?q=_exists_:title OR title:singl? noneOrAnyChar*cter
+Search with fuzzyness and range:
+
+GET /_search?q=title:elastichurch~3 AND date:[2016-01-01 TO 2018-12-31]
+Use in Query DSL (not recommended for user search):
+
+GET /_search
+{
+  "query": {
+    "query_string": {
+      "default_field": "content",
+      "query": "elastic AND (title:lucene OR title:solr)"
+    }
+  }
+}
+Indexes and mapping
+
+Create an index with settings and mapping
+
+PUT /my_index_name
+{
+  "settings": {
+    "number_of_replicas": 1,
+    "number_of_shards": 3,
+    "analysis": {},
+    "refresh_interval": "1s"
+  },
+  "mappings": {
+    "my_type_name": {
+      "properties": {
+        "title": {
+          "type": "string",
+          "analyzer": "english"
+        }
+      }
+    }
+  }
+}
+Update index settings dynamically
+
+PUT /my_index_name/_settings
+{
+  "index": {
+    "refresh_interval": "-1",
+    "number_of_replicas": 0
+  }
+}
+Update an index by adding a field to a type
+
+PUT /my_index_name/_mapping/my_type_name
+{
+  "my_type_name": {
+    "properties": {
+      "tag": {
+        "type": "string",
+        "index": "not_analyzed"
+      }
+    }
+  }
+}
+Get the mapping and the settings
+
+GET /my_index_name/_mapping
+GET /my_index_name/_settings
+Create a document (auto-generated ID)
+
+POST /my_index_name/my_type_name
+{
+  "title": "Elastic is funny",
+  "tag": [
+    "lucene"
+  ]
+}
+Create or update a document
+
+PUT /my_index_name/my_type_name/12abc
+{
+  "title": "Elastic is funny",
+  "tag": [
+    "lucene"
+  ]
+}
+Delete a document
+
+DELETE /my_index_name/my_type_name/12abc
+Open and close indexes to save memory and CPU
+
+POST /my_index_name/_close
+POST /my_index_name/_open
+Remove and create aliases
+
+POST /_aliases
+{
+  "actions": [
+    {
+      "remove": {
+        "index": "my_index_name",
+        "alias": "foo"
+      }
+    },
+    {
+      "add": {
+        "index": "my_index_name",
+        "alias": "bar",
+        "filter" : { "term" : { "user" : "damien" } }
+      }
+    }
+  ]
+}
+List aliases
+
+GET /_aliases
+GET /my_index_name/_alias/*
+GET /*/_alias/*
+GET /*/_alias/foo
+Create and list index warmer
+
+Create a query that will be played on every new document:
+
+PUT /my_index_name/_warmer/my_warmer
+{
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "costly_aggs": {
+      "terms": {
+        "field": "title"
+      }
+    }
+  }
+}
+GET /my_index_name/_warmer
+GET /my_index_name/_warmer/*
+Indices monitoring and information
+
+GET /my_index_name/_stats
+GET /my_index_name/_stats
+GET /my_index_name/_segments
+GET /my_index_name/_recovery?pretty&human
+GET /my_index_name/_warmer/*
+Indices status and management
+
+POST /my_index_name/_cache/clear
+POST /my_index_name/_refresh
+POST /my_index_name/_flush
+POST /my_index_name/_forcemerge
+POST /my_index_name/_upgrade
+GET /my_index_name/_upgrade?pretty&human
+Debug and development
+
+Queries
+
+Get a detailed view of what a query do:
+
+GET /blog/post/_validate/query?explain
+{
+  "query": {
+    "match": {
+      "title": "Smith"
+    }
+  }
+}
+Get an explanation about a document matching or not:
+
+GET /blog/post/1/_explain
+{
+  "query": {
+    "match": {
+      "title": "Smith"
+    }
+  }
+}
+Analysis
+
+Test how a content is tokenized in a field:
+
+GET /blog/_analyze?field=title&text=powerful
+Test analyzer token output by analyzer:
+
+GET /_analyze?analyzer=english&text=powerful
+Cluster management and plugins
+
+Cluster and node information
+
+GET /_cluster/health?pretty
+GET /_cluster/health?wait_for_status=yellow&timeout=50s
+GET /_cluster/state
+GET /_cluster/stats?human&pretty
+GET /_cluster/pending_tasks
+GET /_nodes
+GET /_nodes/stats
+GET /_nodes/nodeId1,nodeId2/stats
+Moving shards manually
+
+Ask the index my_index_name shard 0 of node1 to go to node2:
+
+POST /_cluster/reroute
+{
+  "commands": [
+    {
+      "move": {
+        "index": "my_index_name",
+        "shard": 0,
+        "from_node": "node1",
+        "to_node": "node2"
+      }
+    },
+    {
+      "allocate": {
+        "index": "my_index_name",
+        "shard": 1,
+        "node": "node3"
+      }
+    }
+  ]
+}
+Updating settings
+
+Change dynamically the minimum number of nodes to allow a master election, both persistent or not:
+
+PUT /_cluster/settings
+{
+  "persistent": {
+    "discovery.zen.minimum_master_nodes": 3
+  }
+}
+PUT /_cluster/settings
+{
+  "transient": {
+    "discovery.zen.minimum_master_nodes": 2
+  }
+}
+Disable shard allocation, useful before a rolling restart:
+
+PUT /_cluster/settings
+{
+    "transient" : {
+        "cluster.routing.allocation.enable" : "none"
+    }
+}
+PUT /_cluster/settings
+{
+    "transient" : {
+        "cluster.routing.allocation.enable" : "all"
+    }
+}

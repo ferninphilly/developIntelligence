@@ -1,0 +1,145 @@
+#######LAB 6 ############################Query DSL deeper queries
+
+##Executing Filters####
+
+curl -XPOST 'localhost:9200/bank/_search?pretty' -d '
+{
+  "query": {
+    "bool": {
+      "must": { "match_all": {} },
+      "filter": {
+        "range": {
+          "balance": {
+            "gte": 20000,
+            "lte": 30000
+          }
+        }
+      }
+    }
+  }
+}'
+
+curl -XPOST 'localhost:9200/books/es/1' -d '{"title":"Elasticsearch Server", "published": 2013}'
+curl -XPOST 'localhost:9200/books/es/2' -d '{"title":"Elasticsearch Server Second Edition", "published": 2014}'
+curl -XPOST 'localhost:9200/books/es/3' -d '{"title":"Mastering Elasticsearch", "published": 2013}'
+curl -XPOST 'localhost:9200/books/es/4' -d '{"title":"Mastering Elasticsearch Second Edition", "published": 2015}'
+curl -XPOST 'localhost:9200/books/solr/1' -d '{"title":"Apache Solr 4 Cookbook", "published": 2012}'
+curl -XPOST 'localhost:9200/books/solr/2' -d '{"title":"Solr Cookbook Third Edition", "published": 2015}'
+
+GET _search
+{
+  "query": { 
+    "bool": { 
+      "must": [
+        { "match": { "title":   "Search"        }}, 
+        { "match": { "content": "Elasticsearch" }}  
+      ],
+      "filter": [ 
+        { "term":  { "status": "published" }}, 
+        { "range": { "publish_date": { "gte": "2015-01-01" }}} 
+      ]
+    }
+  }
+}
+
+{ "match_all": {} }
+
+{ "match_all": { "boost" : 1.2 }}
+
+{
+    "match" : {
+        "message" : "this is a test"
+    }
+}
+
+
+######fuzziness
+{
+    "match" : {
+        "message" : {
+            "query" : "this is a test",
+            "operator" : "and"
+        }
+    }
+}
+
+#### zero_terms_query
+{
+    "match" : {
+        "message" : {
+            "query" : "to be or not to be",
+            "operator" : "and",
+            "zero_terms_query": "all"
+        }
+    }
+}
+
+#######Phrase####
+
+{
+    "match_phrase" : {
+        "message" : "this is a test"
+    }
+}
+
+{
+    "match" : {
+        "message" : {
+            "query" : "this is a test",
+            "type" : "phrase"
+        }
+    }
+}
+
+curl -XPUT 'localhost:9200/library/book/_mapping' -d 
+{ "index": {"_index": "library", "_type": "book", "_id": "1"}}
+{ "title": "All Quiet on the Western Front","otitle": "Im Westen nichts Neues","author": "Erich Maria Remarque","year": 1929,"characters": ["Paul Bäumer", "Albert Kropp", "Haie Westhus", "Fredrich Müller", "Stanislaus Katczinsky", "Tjaden"],"tags": ["novel"],"copies": 1, "available": true, "section" : 3}
+	{ "index": {"_index": "library", "_type": "book", "_id": "2"}}{ "title": "Catch-22","author": "Joseph Heller","year": 1961,"characters": ["John Yossarian", "Captain Aardvark", "Chaplain Tappman", "Colonel Cathcart", "Doctor Daneeka"],"tags": ["novel"],"copies": 6, "available" : false, "section" : 1}
+		{ "index": {"_index": "library", "_type": "book", "_id": "3"}}{ "title": "The Complete Sherlock Holmes","author": "Arthur Conan Doyle","year": 1936,"characters": ["Sherlock Holmes","Dr. Watson", "G. Lestrade"],"tags": [],"copies": 0, "available" : false, "section" : 12}
+			{ "index": {"_index": "library", "_type": "book", "_id": "4"}}{ "title": "Crime and Punishment","otitle": "Преступлéние и наказáние","author": "Fyodor Dostoevsky","year": 1886,"characters": ["Raskolnikov", "Sofia Semyonovna Marmeladova"],"tags": [],"copies": 0, "available" : true}
+
+				{
+  "query" : { 
+    "query_string" : { "query" : "title:crime" }
+  }
+}
+
+curl -XGET 'localhost:9200/library/book/_search?pretty' -d '{
+  "query" : {
+    "query_string" : { "query" : "title:crime" }
+  }
+}'
+
+curl -XGET 'localhost:9200/library/book/_search?pretty' -d '{
+  "from" :  9,
+  "size" : 20,
+  "query" : {
+    "query_string" : { "query" : "title:crime" }
+  }
+}'
+
+curl -XGET 'localhost:9200/library/book/_search?pretty' -d '{
+     "version" : true,
+     "query" : {
+       "query_string" : { "query" : "title:crime" }
+     }
+}'
+
+curl -XGET 'localhost:9200/library/book/_search?pretty' -d '{
+  "fields" : [ "title", "year" ],
+  "query" : {
+    "query_string" : { "query" : "title:crime" }
+  }
+}'
+
+curl -XGET 'localhost:9200/library/book/_search?pretty' -d '{
+  "script_fields" : {
+    "correctYear" : {
+      "script" : "doc[\"year\"].value - 1800"
+    } 
+  }, 
+  "query" : {
+    "query_string" : { "query" : "title:crime" }
+  }
+}'
+

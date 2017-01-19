@@ -1,0 +1,233 @@
+#######LAB 8 ############################ suggestors
+
+POST /bank/_search
+
+POST /bank/_search
+{
+
+  "size": 0,
+
+  "suggest" : {
+
+    "address-suggestions-1" : {
+
+      "text" : "Putanm Aveune",
+
+      "term" : {
+
+        "size" : 3,
+
+        "field" : "address"
+
+      }
+
+    }
+
+  }
+
+}
+
+POST /bank/_search
+{
+
+  "size": 0,
+
+  "suggest" : {
+
+    "address-suggestions-1" : {
+
+      "text" : "Rockwell",
+
+      "term" : {
+
+        "size" : 3,
+
+        "field" : "address"
+
+      }
+
+    }
+
+  }
+
+}
+
+POST /bank/_search
+{
+
+  "size": 0,
+
+  "suggest" : {
+
+    "address-suggestions-1" : {
+
+      "text" : "Rock",
+
+      "term" : {
+
+        "size" : 3,
+
+        "field" : "address"
+
+      }
+
+    }
+
+  }
+
+}
+
+POST /bank/_search
+{
+
+  "size": 0,
+
+  "suggest" : {
+
+    "address-suggestions-1" : {
+
+      "text" : "Rockw",
+
+      "term" : {
+
+        "size" : 3,
+
+        "field" : "address"
+
+      }
+
+    }
+
+  }
+
+}
+
+POST /bank/_search
+{
+
+  "size": 0,
+
+  "suggest" : {
+
+    "address-suggestions-1" : {
+
+      "text" : "Rockwe",
+
+      "term" : {
+
+        "size" : 3,
+
+        "field" : "address"
+
+      }
+
+    }
+
+  }
+
+}
+
+POST /bank/_search
+{
+
+  "size": 0,
+
+  "suggest" : {
+
+    "address-suggestions-1" : {
+
+      "text" : "zapix.com",
+
+      "term" : {
+
+        "size" : 3,
+
+        "field" : "email"
+
+      }
+
+    }
+
+  }
+
+}
+
+POST /bank/_search
+{
+
+  "size": 0,
+
+  "suggest" : {
+
+    "address-suggestions-1" : {
+
+      "text" : "Ratcliff",
+
+      "term" : {
+
+        "size" : 3,
+
+        "field" : "firstname"
+
+      }
+
+    }
+
+  }
+
+}
+
+
+
+##### already at too much material for a 2 day intro class, but here is a work in progres for teh data set...
+POST shakespeare/_search
+
+POST /shakespeare/_search
+{
+
+  "suggest" : {
+
+    "text" : "intestine shock",
+
+    "simple_phrase" : {
+
+      "phrase" : {
+
+        "analyzer" : "standard",
+
+        "field" : "text_entry",
+
+        "size" : 1,
+
+        "real_word_error_likelihood" : 0.95,
+
+        "max_errors" : 0.5,
+
+        "gram_size" : 2,
+
+        "direct_generator" : [ {
+
+          "field" : "text_entry",
+
+          "suggest_mode" : "always",
+
+          "min_word_length" : 1
+
+        } ],
+
+        "highlight": {
+
+          "pre_tag": "<em>",
+
+          "post_tag": "</em>"
+
+        }
+
+      }
+
+    }
+
+  }
+
+}
+

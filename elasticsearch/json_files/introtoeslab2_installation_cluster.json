@@ -1,0 +1,100 @@
+
+#########################Lab 2 ####################################Installation , plugins, and components
+####For Installation Details please refer to the PDF file with labs in the name inside Class Presentations for the IntroToES2016 Github repo
+
+
+
+
+####Cluster Upgrade#########
+PUT /_cluster/settings
+{
+  "transient": {
+    "cluster.routing.allocation.enable": "none"
+  }
+}
+
+
+
+
+PUT /_all/_settings
+{
+  "index": {
+    "translog.disable_flush": "true"
+  }
+}
+
+
+PUT /_all/_settings
+{
+  "index": {
+    "translog.disable_flush": "false"
+  }
+}
+
+PUT /_cluster/settings
+{
+  "transient": {
+    "cluster.routing.allocation.enable": "all"
+  }
+}
+
+
+###rolling upgrades######
+PUT /_cluster/settings
+{
+  "transient": {
+    "cluster.routing.allocation.enable": "none"
+  }
+}
+
+POST /_flush/synced
+
+GET _cat/nodes
+
+PUT /_cluster/settings
+{
+  "transient": {
+    "cluster.routing.allocation.enable": "all"
+  }
+}
+
+GET _cat/health
+
+GET _cat/recovery
+
+###monitor nodes and repeat once this node is complete
+
+
+#########adding a new node
+
+update your elasticsearch.yml in these section.
+
+– Change Cluster Name
+
+# Must be existing cluster name
+cluster.name: techieroop
+– Configure node name and type of the node
+
+node.name: newnode
+# If add node only as a data node. If you want to add node as master then keep this value "true"
+node.master: false
+node.data: true
+– Configure number of shard and replicas
+
+# Shard and replica value should be same as existing node configuration.
+index.number_of_shards: 5
+index.number_of_replicas: 1
+– Discovery settings
+
+This is the most important configuration. Write your master node ip or host name(in my example it is 127.0.0.2) . So that your new node can join to your master node.
+
+# 2. Configure an initial list of master nodes in the cluster
+# to perform discovery when new nodes (master or data) are started:
+#
+#discovery.zen.ping.unicast.hosts: ["host1", "host2:port"]
+discovery.zen.ping.unicast.hosts: ['127.0.0.2']
+3) Restart the Elasticsearch node.
+
+These are the important config changes we should do while installation Elasticsearch. After the successfully installation you can check new node through Cluster API.
+
+curl -XGET 'http://localhost:9200/_nodes'
