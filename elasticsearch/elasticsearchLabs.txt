@@ -43,7 +43,7 @@ ELK Stack:
 	curl -XGET "http://localhost:9200/films/movie/1?pretty"
 
 	#Notice that I've added a "pretty" option here. This parameter allows us to see the data in a #nicely formatted way.
-	#Now- we've created an index- let's look at some metadata about it. We will do this with the #"_mapping" parameter. Think of this as the "Describe" function in SQL
+	#Now- we've created an index- let's look at some metadata about it. We will do this with the #"_mapping" parameter. Think #of this as the "Describe" function in SQL
 	
 	curl -XGET "http://localhost:9200/films/_mapping?pretty"
 	
@@ -77,40 +77,24 @@ ELK Stack:
 	#We also have the UPSERT here that will update a doc for, for example, a counter. Let's create 
 	#a quick index to demonstrate:
 
-	curl -XPUT 'http://localhost:9200/test/type1/1' -d' { "counter" : 1, "tags" : ["red"] }'
+	curl -XGET 'http://localhost:9200/test/type1/1' -d' { "counter" : 1, "tags" : ["red"] }'
 
 	#So here we have a "Counter" field and a "Tags" field. 
 	#We have a program called ctx that allows us to run scripts to update- for example:
 
-	curl -XPOST 'localhost:9200/test/type1/1/_update?pretty' -d' { "script" : {
-        "inline": "ctx._source.counter += params.count",
-        "lang": "painless",
-        "params" : {
-            "count" : 4
-        			}
-    			}
-			}'
+	curl -XPOST 'localhost:9200/test/type1/1/_update?pretty' -d' { "script" : { "inline": "ctx._source.counter += params.count", "lang": "painless", "params" : { "count" : 4 } } }'
 
 	#The above script will add 4 to the counter of test/type1 document each time it is run.
 	#This can also be used to update tags as such:
 
 	curl -XPOST 'localhost:9200/test/type1/1/_update?pretty' -d'
-		{
-    "script" : {
-        "inline": "ctx._source.tags.add(params.tag)",
-        "lang": "painless",
-        "params" : {
-            "tag" : "blue"
-		        }
-		    }
-		}
-		'
+	{ "script" : { "inline": "ctx._source.tags.add(params.tag)", "lang": "painless", "params" : {
+    "tag" : "blue"}}}'
 
 	#And finally- you can do a partial upsert by setting the parameter "doc_as_upsert" to TRUE as 
 	#here:
 
-	curl -XPOST 'localhost:9200/test/type1/1/_update?pretty' -d' { "doc" : {
-        "name" : "new_name" },
+	curl -XPOST 'localhost:9200/test/type1/1/_update?pretty' -d' { "doc" : {"name" : "new_name" },
     "doc_as_upsert" : true }'
 
     #Now let's talk about deleting- which is pretty simple: 
@@ -129,7 +113,7 @@ ELK Stack:
 	#of Billy Shakespeare. Download it through git and then let's bulk insert it into our
 	#single node cluster (from within the directory)
 
-	curl -XPUT localhost:9200/_bulk --data-binary @shakespeare.json
+			 @shakespeare.json
 
 	#Now let's run to check out health again: 
 	curl 'localhost:9200/_cat/indices?v'
@@ -193,7 +177,7 @@ curl -XGET 'localhost:9200/shakespeare/_search?pretty' -d'
 
 	curl -XGET 'localhost:9200/shakespeare/_search?pretty' -d'
 	{
-  		"query": { "match": { "speaker": "ROMEO" } }
+  		"query": { "match": { "speaker": "romeo" } }
 	}
 	'
 
@@ -233,14 +217,18 @@ curl -XGET 'localhost:9200/shakespeare/_search?pretty' -d'
 	{
 	  "query": {
 	    "bool": {
-	      "should": [
+	      "must": [
 	        { "match": { "speaker": "Juliet" } },
-	        { "match": { "text_entry": "Once more unto the breach" } }
+	        { "match_phrase": { "text_entry": "Once more unto the breach" }}
 	      ]
 	    }
-	  }
+	  },
+	 "size": 10
+	 
 	}
 	'
+curl -XPOST 'localhost:9200/bank/account/_bulk?pretty&refresh' --data-binary "@accounts.json"
+
 #There are also "must not" clauses that go into the bool.
 #The "type" query is also a broad query that we can utilize to look at "type". 
 
@@ -267,6 +255,30 @@ curl -XGET 'localhost:9200/shakespeare/_search?pretty' -d'
 		'
 
 
+curl -XGET "http://localhost:9200/shakespeare/_search?pretty" -d'
+	{
+		"query": {
+			"bool": {
+				"must": [
+					{ "match_phrase": 
+						{ "speech_number": 5} },
+					{  "match_phrase":
+						{ "play_name": "macbeth" } },
+					{ "match_phrase":
+						{"speaker": "MACBETH" } }
+						],
+				"must_not": [
+					{"match_phrase":
+						{"speaker": "LADY MACBETH"}}
+						]
+			}
+		},
+		"sort": [
+					{"line_id": "asc"} 
+				],
+		"size": 100
+
+	}'
 
 #Now let's use filtering to get to a specific speach. Let's do HAMLET'S "to be or not to be?"
 #Please take 30 minutes and create your query. 
@@ -403,13 +415,18 @@ curl -XGET 'localhost:9200/shakespeare/_search?pretty' -d'
 
 	#Now let's "match" a specific query. If we want multiple matches we can run this:
 
-	curl -XGET 'localhost:9200/_search?pretty' -d'
+	curl -XGET 'localhost:9200/shakespeare/_search?pretty' -d'
 	{
 	    "query": {
-	        "match": { "play_name": "Henry IV"}},
-			"match": { "speech_number": 2}},
-			"match": { "speaker": "Westmoreland"}},
-			"match": { "text_entry": "Leading the men of Herefordshire to fight"}},
+	    	"bool": {
+	    		"must": [
+		    		"match": { "play_name": "Henry IV"},
+					"match": { "speech_number": 2},
+					"match": { "speaker": "Westmoreland"},
+					"match": { "text_entry": "Leading the men of Herefordshire to fight"}
+			]
+		}
+	  }
 	}'
 
 	{
@@ -434,4 +451,52 @@ curl -XGET 'localhost:9200/_search?pretty' -d'
     }
 }
 '
+
+{
+  "query": { 
+    "bool": { 
+      "must": [
+        { "match": { "title":   "Search"        }}, 
+        { "match": { "content": "Elasticsearch" }}  
+      ],
+      "filter": [ 
+        { "term":  { "status": "published" }}, 
+        { "range": { "publish_date": { "gte": "2015-01-01" }}} 
+      ]
+    }
+  }
+}
+
+{ "match_all": {} }
+
+{ "match_all": { "boost" : 1.2 }}
+
+{
+    "match" : {
+        "message" : "this is a test"
+    }
+}
+
+curl -XPOST 'localhost:9200/bank/_search?pretty' -d '
+{
+  "size": 0,
+  "aggs": {
+  	"fielddata":"true",
+    "group_by_state": {
+      "terms": {
+        "field": "state"
+      }
+
+    }
+  }
+}'
+
+curl -XPUT "localhost:9200/bank/_mapping/account?pretty" -d '{
+  "properties": {
+    "state": { 
+      "type":     "text",
+      "fielddata": true
+    }
+  }
+}
 

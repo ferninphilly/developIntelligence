@@ -1,0 +1,263 @@
+#Elk Stack Labs
+#Lab one: Installation
+	#WARNING: Copying this stuff off of the powerpoint will not end well for you (makes
+	#a bunch of funky characters)
+
+		#1. Start by installing Virtualbox (if you haven't already):
+		https://www.virtualbox.org/wiki/Downloads
+
+		#2. Install Vagrant:
+		https://www.vagrantup.com/downloads.html
+
+		#3: Init a ubuntu instance:
+		Vagrant init ubuntu/xenial
+
+		#4: cd into the correct location for the vagrant virtualbox and run:
+		Vagrant up #On the command line
+
+		#5:Run this to ssh into your vagrant machine:
+		Vagrant ssh
+
+		#Wait...give the Virtualbox time to initiate. Make sure nothing is running
+		#on port 9200 on your localhost. Once your VM is up and running:
+
+		#6: Update your system:
+		sudo apt-get update && sudo apt-get upgrade
+
+		#7: Install curl
+		sudo apt-get -y install curl
+
+		#8: install openjdk-8
+		sudo apt-get purge openjdk*
+		sudo add-apt-repository -y ppa:webupd8team/java
+		sudo apt-get update
+		sudo apt-get -y install oracle-java8-installer
+
+		#11: Install:
+		wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+		sudo apt-get update && sudo apt-get install elasticsearch
+		echo "deb http://packages.elastic.co/elasticsearch/2.x/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-2.x.list
+		sudo apt-get update
+	
+
+		#12: Edit configs & Set defaults:
+		sudo vi /etc/elasticsearch/elasticsearch.yml
+		#Set this:
+		network.host: localhost
+		#save and exit
+		sudo systemctl restart elasticsearch
+		sudo systemctl daemon-reload
+		sudo systemctl enable elasticsearch
+
+		#14: Enable cors to allow you to use sense:
+		sudo sh -c "echo 'http.cors.enabled: true' >> /etc/elasticsearch/elasticsearch.yml"
+		sudo sh -c "echo 'http.cors.allow-origin: /https?:\/\/localhost(:[0-9]+)?/' >> /etc/elasticsearch/elasticsearch.yml"
+
+		#15: Enable dynamic scripting:
+		sudo echo "script.inline: on" >> /etc/elasticsearch/elasticsearch.yml
+		sudo echo "script.indexed: on" >> /etc/elasticsearch/elasticsearch.yml
+
+		#16: Restart elasticsearch:
+		sudo /etc/init.d/elasticsearch start
+
+		#17: Install kibana:
+		wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+
+		#18: #update:
+		echo "deb http://packages.elastic.co/kibana/4.5/debian stable main" | sudo tee -a /etc/apt/sources.list
+
+		#19: Fully install kibana:
+		sudo apt-get update && sudo apt-get install kibana
+
+		#20: Update yaml
+		sudo sh -c "echo 'elasticsearch.url: "http://localhost:9200'"" >> /opt/kibana/config/kibana.yml 
+
+
+		#21: 
+		sudo update-rc.d kibana defaults 95 10
+
+		#22: Reload the daemon & enable the service:
+		sudo /bin/systemctl daemon-reload
+		sudo /bin/systemctl enable kibana.service
+
+		#23: Restart Kibana:
+		sudo /etc/init.d/kibana restart
+
+		#24:Install sense and marvel plugins:
+		sudo /opt/kibana/bin/kibana plugin --install elastic/sense
+
+		#25: Fix permissions bug:
+		sudo chown kibana:root /opt/kibana/optimize/.babelcache.json
+
+		#26: Restart system:
+		sudo /etc/init.d/elasticsearch restart
+		sudo /etc/init.d/kibana restart
+
+		#27: Install key for Logstash:
+		wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+		sudo apt-get install apt-transport-https
+		echo "deb http://packages.elastic.co/logstash/2.3/debian stable main" | sudo tee -a /etc/apt/sources.list
+
+
+		#28: And install:
+		sudo apt-get update && sudo apt-get install logstash
+
+		#29: Install filebeats and set to run at book:
+		sudo apt-get update && sudo apt-get install filebeat
+		sudo update-rc.d filebeat defaults 95 10
+
+		#30: Start logstash service:
+		sudo systemctl start logstash.service
+
+		#and we should be good to go!
+
+#Lab 2: Elasticsearch and Creating/Retrieving/Updating/Deleting content:
+	#Obviously at this point we are interested in Creating, Retrieving, Updating, Deleting data
+	#So let's create a document. We do this by utilizing the PUT command for a JSON doc.
+	#As I work (sort of) in the film industry I am going to utilize a film for our document. 
+	#That film will be star wars. 
+	#When we "put" a film into the elasticsearch index we name the index (films), the type (movie)
+	#and then the unique identifier (1)
+
+	curl -XPUT "http://localhost:9200/films/movie/1" -d' { "title": "Star Wars", "director": "George Lucas", "year": 1977 }'
+
+	#So we've identified this as document "1". Let's retrieve it:
+	curl -XGET "http://localhost:9200/films/movie/1?pretty"
+
+	#Notice that I've added a "pretty" option here. This parameter allows us to see the data in a #nicely formatted way.
+	#Now- we've created an index- let's look at some metadata about it. We will do this with the #"_mapping" parameter. Think #of this as the "Describe" function in SQL
+	
+	curl -XGET "http://localhost:9200/films/_mapping?pretty"
+	
+	#And what if we want the equivalent of "SELECT *"?
+
+	curl -XGET "http://localhost:9200/_all/_mapping?pretty"
+
+	#And if you want *just* the data and no metadata- utilize the "_source" command:
+
+	curl -XGET "http://localhost:9200/films/movie/1/_source?pretty"
+
+	#Now- with Star Wars we identified a document number (1). What if we want the equivalent from 
+	#relational databases of an incremental non-null unique identifier? 
+	#Instead of using "PUT" we would use "POST" AND we would do something like this:
+
+	curl -XPOST "http://localhost:9200/films/movie/ -d' {"title":"Empire Strikes Back", "Director": "Irvin Kershner", "Year": 1980 }'
+
+	#Now that that is in there let's look at all of our current docs:
+	curl -XGET "http://localhost:9200/films/_search?pretty"
+	#Do you see the document ID that was auto-generated by elasticsearch?
+
+	#Now let's talk about updating your documents. Here our issue is that unfortunately (as per our #slide) once a document is flushed to a disk it is immutable (written once read often). SO this
+	#means that in order to update a document, Elasticsearch runs a GET request, modifies the _source 
+	#field, removes the old document, and indexes a new document with the updated content. For 
+	#instance- here we want to update our FILM (Star wars) and add in a "genres" list.
+	#We must update the entire document as so:
+
+	curl -XPUT "http://localhost:9200/films/movie/1" -d' { "title": "Star Wars", "director": "George Lucas", "year": 1977, "genres": ["Sci-Fi", "Adventure"]}'
+
+	#Did you see the _version: value returned? 
+	#We also have the UPSERT here that will update a doc for, for example, a counter. Let's create 
+	#a quick index to demonstrate:
+
+	curl -XGET 'http://localhost:9200/test/type1/1' -d' { "counter" : 1, "tags" : ["red"] }'
+
+	#So here we have a "Counter" field and a "Tags" field. 
+	#We have a program called ctx that allows us to run scripts to update- for example:
+
+	curl -XPOST 'localhost:9200/test/type1/1/_update?pretty' -d' { "script" : { "inline": "ctx._source.counter += params.count", "lang": "painless", "params" : { "count" : 4 } } }'
+
+	#The above script will add 4 to the counter of test/type1 document each time it is run.
+	#This can also be used to update tags as such:
+
+	curl -XPOST 'localhost:9200/test/type1/1/_update?pretty' -d'
+	{ "script" : { "inline": "ctx._source.tags.add(params.tag)", "lang": "painless", "params" : {
+    "tag" : "blue"}}}'
+
+	#And finally- you can do a partial upsert by setting the parameter "doc_as_upsert" to TRUE as 
+	#here:
+
+	curl -XPOST 'localhost:9200/test/type1/1/_update?pretty' -d' { "doc" : {"name" : "new_name" },
+    "doc_as_upsert" : true }'
+
+    #Now let's talk about deleting- which is pretty simple: 
+    curl -XDELETE 'http://localhost:9200/test/type1/1'
+
+    #It is possible to have multiple versions of a doc out there (remember the version parameter)?
+    #For example:
+
+	curl -XPUT "http://localhost:9200/films/movie/2" -d '{ "title": "Return of the Jedi", "director": "Richard Marquand", "year": 1983, "genres": ["Sci-Fi", "Adventure"], "rank": "the best" }'
+
+	curl -XPUT "http://localhost:9200/films/movie/2" -d '{ "title": "Return of the Jedi", "director": "Richard Marquand", "year": 1983, "genres": ["Sci-Fi", "Adventure"], "rank": "the worst" }'
+
+	curl -XDELETE 'http://localhost:9200/films/movie/2?version=1'
+
+	#Bulk updates: I have included a file called "shakespeare.json" which includes the complete works
+	#of Billy Shakespeare. Download it through git and then let's bulk insert it into our
+	#single node cluster (from within the directory)
+
+			 @shakespeare.json
+
+	#Now let's run to check out health again: 
+	curl 'localhost:9200/_cat/indices?v'
+
+#Lab 3: Logstash and parsing logs:
+	#For this lab we want to talk about how logstash is parsing our data.
+	#Elasticsearch is reading the data and utilizing it's powerful text 
+	#search to do so- but now we want to parse the data effectively.
+
+	#At it's core Logstash does three things: 
+		#Reads files
+		#Parses & filters them
+		#Outputs them somwhere
+	#Let's head over to where logstash lives:
+	cd /usr/share/logstash
+
+	#Now let's log a basic event. Let's skip "Hello world" and do "Hola Mundo!" instead:
+		#Let's tell logstash where we want our inputs and outputs to go (note that you might #need to change permissions on the shared directory using sudo chmod -R 777 #/usr/share/logstash/data)
+		
+		bin/logstash -e 'input { stdin{} } output { stdout{} }'
+		
+		# the "-e " takes inputs directly from the command line. Think of it as altering the #.yml on the fly! All we are saying here is "in from the input and out from the #stdout output". Not really all THAT interesting but important. 
+		#Once you see "pipeline main" try typing this into the command line:
+		Hello World
+		#If you see a log entry appear then logstash is working for you.
+
+		#Now let's configure! 
+		#First question- where are our logs? The path needs to be laid out. 
+		
+		#Copy your logstash-tutorial.log file over (from the lab_files directory) and place #it in the /var/log/ directory
+
+		#Now in reality most of this will be done with filebeat- which we installed in 
+		#section one. We will want to 
+
+		#Our first step is to define the path (or paths) of our logfiles. To do this we will 
+		#create a beats conf file as such:
+		sudo vi /etc/logstash/conf.d/02-beats-input.conf
+
+		#We're going to place this in there. This input is basically saying "listen for a 
+		#beats input on TCP port 5044 and use the ssl certificate we provided earlier"
+
+	    #Now we don't need to map this because we placed our sample log file in there already
+	    #Filebeat will now harvest this file
+	    #Note the use of the wildcard- you can harvest files in subdirectories as well.
+	    #Now let's update the output to localhost for logstash instead of elasticsearch
+	    #SO- what we're going to do is edit the yml, comment out the output to elasticsearch
+	    #and comment in the output to logstash alterting "localhost" to "127.0.0.1" and #listening on port 5044
+	    sudo ufw allow 5044
+
+	    #We will be using beats to harvest our files- and they work on an ssl key-pair so
+	    #we need to create files to hold those:
+	    sudo mkdir -p /etc/pki/tls/certs
+		sudo mkdir /etc/pki/tls/private
+
+	    #----------------------------- Logstash output --------------------------------
+		output.logstash:
+		  hosts: ["127.0.0.1:5044"]
+
+		#Now to configure logstash to accept beats- navigate to the logstash home directory 
+		#and run the following:
+		sudo ./bin/logstash-plugin install logstash-input-beats
+
+
+
+

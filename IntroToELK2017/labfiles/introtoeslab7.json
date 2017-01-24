@@ -1,0 +1,595 @@
+#######LAB 7 ############################ mappings
+
+
+PUT my_index 
+{
+  "mappings": {
+    "user": { 
+      "_all":       { "enabled": false  }, 
+      "properties": { 
+        "title":    { "type": "string"  }, 
+        "name":     { "type": "string"  }, 
+        "age":      { "type": "integer" }  
+      }
+    },
+    "blogpost": { 
+      "properties": { 
+        "title":    { "type": "string"  }, 
+        "body":     { "type": "string"  }, 
+        "user_id":  {
+          "type":   "string", 
+          "index":  "not_analyzed"
+        },
+        "created":  {
+          "type":   "date", 
+          "format": "strict_date_optional_time||epoch_millis"
+        }
+      }
+    }
+  }
+}
+
+
+Create an index called my_index.
+Add mapping types called user and blogpost.
+Disable the _all meta field for the user mapping type.
+Specify fields or properties in each mapping type.
+Specify the data type and mapping for each field.
+
+#####Multi-Arrray data types
+
+PUT my_index/my_type/1
+{
+  "message": "some arrays in this document...",
+  "tags":  [ "elasticsearch", "wow" ], 
+  "lists": [ 
+    {
+      "name": "prog_list",
+      "description": "programming list"
+    },
+    {
+      "name": "cool_list",
+      "description": "cool stuff list"
+    }
+  ]
+}
+
+PUT my_index/my_type/2 
+{
+  "message": "no arrays in this document...",
+  "tags":  "elasticsearch",
+  "lists": {
+    "name": "prog_list",
+    "description": "programming list"
+  }
+}
+
+GET my_index/_search
+{
+  "query": {
+    "match": {
+      "tags": "elasticsearch" 
+    }
+  }
+}
+
+	
+The tags field is dynamically added as a string field.
+The lists field is dynamically added as an object field.
+The second document contains no arrays, but can be indexed into the same fields.
+The query looks for elasticsearch in the tags field, and matches both documents.
+
+###Binary Data types#####
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "blob": {
+          "type": "binary"
+        }
+      }
+    }
+  }
+}
+
+PUT my_index/my_type/1
+{
+  "name": "Some binary blob",
+  "blob": "U29tZSBiaW5hcnkgYmxvYg==" 
+}
+
+####Boolean Datatype
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "is_published": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
+
+POST my_index/my_type/1
+{
+  "is_published": true 
+}
+
+GET my_index/_search
+{
+  "query": {
+    "term": {
+      "is_published": 1 
+    }
+  }
+}
+
+	
+Indexing a document with a JSON true.
+Querying for the document with 1, which is interpreted as true.
+
+
+POST my_index/my_type/1
+{
+  "is_published": true
+}
+
+POST my_index/my_type/2
+{
+  "is_published": false
+}
+
+GET my_index/_search
+{
+  "aggs": {
+    "publish_state": {
+      "terms": {
+        "field": "is_published"
+      }
+    }
+  },
+  "script_fields": {
+    "is_published": {
+      "script": "doc['is_published'].value" 
+    }
+  }
+}
+
+####date datatype
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "date": {
+          "type": "date" 
+        }
+      }
+    }
+  }
+}
+
+PUT my_index/my_type/1
+{ "date": "2015-01-01" } 
+
+PUT my_index/my_type/2
+{ "date": "2015-01-01T12:10:30Z" } 
+
+PUT my_index/my_type/3
+{ "date": 1420070400001 } 
+
+GET my_index/_search
+{
+  "sort": { "date": "asc"} 
+}
+
+The date field uses the default format.
+This document uses a plain date.
+This document includes a time.
+This document uses milliseconds-since-the-epoch.
+Note that the sort values that are returned are all in milliseconds-since-the-epoch.
+
+#####multiple date formats######
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "date": {
+          "type":   "date",
+          "format": "yyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+        }
+      }
+    }
+  }
+}
+
+#####Geo point ####
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "location": {
+          "type": "geo_point"
+        }
+      }
+    }
+  }
+}
+
+PUT my_index/my_type/1
+{
+  "text": "Geo-point as an object",
+  "location": { 
+    "lat": 41.12,
+    "lon": -71.34
+  }
+}
+
+PUT my_index/my_type/2
+{
+  "text": "Geo-point as a string",
+  "location": "41.12,-71.34" 
+}
+
+PUT my_index/my_type/3
+{
+  "text": "Geo-point as a geohash",
+  "location": "drm3btev3e86" 
+}
+
+PUT my_index/my_type/4
+{
+  "text": "Geo-point as an array",
+  "location": [ -71.34, 41.12 ] 
+}
+
+GET my_index/_search
+{
+  "query": {
+    "geo_bounding_box": { 
+      "location": {
+        "top_left": {
+          "lat": 42,
+          "lon": -72
+        },
+        "bottom_right": {
+          "lat": 40,
+          "lon": -74
+        }
+      }
+    }
+  }
+}
+
+	
+Geo-point expressed as an object, with lat and lon keys.
+Geo-point expressed as a string with the format: "lat,lon".
+Geo-point expressed as a geohash.
+Geo-point expressed as an array with the format: [ lon, lat]
+A geo-bounding box query which finds all geo-points that fall inside the box.
+
+#####IPV 4 data type
+
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "ip_addr": {
+          "type": "ip"
+        }
+      }
+    }
+  }
+}
+
+PUT my_index/my_type/1
+{
+  "ip_addr": "192.168.1.1"
+}
+
+GET my_index/_search
+{
+  "query": {
+    "range": {
+      "ip_addr": {
+        "gte": "192.168.1.0",
+        "lt":  "192.168.2.0"
+      }
+    }
+  }
+}
+
+####Nested Data types ######
+
+PUT my_index/my_type/1
+{
+  "group" : "fans",
+  "user" : [ 
+    {
+      "first" : "John",
+      "last" :  "Smith"
+    },
+    {
+      "first" : "Alice",
+      "last" :  "White"
+    }
+  ]
+}
+
+GET my_index/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        { "match": { "user.first": "Alice" }},
+        { "match": { "user.last":  "Smith" }}
+      ]
+    }
+  }
+}
+
+####using nested fields for arrays of objects
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "user": {
+          "type": "nested" 
+        }
+      }
+    }
+  }
+}
+
+PUT my_index/my_type/1
+{
+  "group" : "fans",
+  "user" : [
+    {
+      "first" : "John",
+      "last" :  "Smith"
+    },
+    {
+      "first" : "Alice",
+      "last" :  "White"
+    }
+  ]
+}
+
+GET my_index/_search
+{
+  "query": {
+    "nested": {
+      "path": "user",
+      "query": {
+        "bool": {
+          "must": [
+            { "match": { "user.first": "Alice" }},
+            { "match": { "user.last":  "Smith" }} 
+          ]
+        }
+      }
+    }
+  }
+}
+
+GET my_index/_search
+{
+  "query": {
+    "nested": {
+      "path": "user",
+      "query": {
+        "bool": {
+          "must": [
+            { "match": { "user.first": "Alice" }},
+            { "match": { "user.last":  "White" }} 
+          ]
+        }
+      },
+      "inner_hits": { 
+        "highlight": {
+          "fields": {
+            "user.first": {}
+          }
+        }
+      }
+    }
+  }
+}
+
+#####Numeric Datatypes
+
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "number_of_bytes": {
+          "type": "integer"
+        },
+        "time_in_seconds": {
+          "type": "float"
+        }
+      }
+    }
+  }
+}
+
+####Object Datatype
+
+PUT my_index/my_type/1
+{ 
+  "region": "US",
+  "manager": { 
+    "age":     30,
+    "name": { 
+      "first": "John",
+      "last":  "Smith"
+    }
+  }
+}
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": { 
+      "properties": {
+        "region": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "manager": { 
+          "properties": {
+            "age":  { "type": "integer" },
+            "name": { 
+              "properties": {
+                "first": { "type": "string" },
+                "last":  { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+The mapping type is a type of object, and has a properties field.
+The manager field is an inner object field.
+The manager.name field is an inner object field within the manager field.
+
+#####string data type######
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "full_name": { 
+          "type":  "string"
+        },
+        "status": {
+          "type":  "string", 
+          "index": "not_analyzed"
+        }
+      }
+    }
+  }
+}
+
+#### Token Count Data Type ######
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties": {
+        "name": { 
+          "type": "string",
+          "fields": {
+            "length": { 
+              "type":     "token_count",
+              "analyzer": "standard"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+PUT my_index/my_type/1
+{ "name": "John Smith" }
+
+PUT my_index/my_type/2
+{ "name": "Rachel Alice Williams" }
+
+GET my_index/_search
+{
+  "query": {
+    "term": {
+      "name.length": 3 
+    }
+  }
+}
+
+The name field is an analyzed string field which uses the default standard analyzer.
+The name.length field is a token_count multi-field which will index the number of tokens in the name field.
+This query matches only the document containing Rachel Alice Williams, as it contains three tokens.
+
+###############Dynamic Mappings
+
+#####Dynamic date detection
+
+PUT my_index/my_type/1
+{
+  "create_date": "2015/09/02"
+}
+
+GET my_index/_mapping 
+
+#####disable date detection
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "date_detection": false
+    }
+  }
+}
+
+PUT my_index/my_type/1 
+{
+  "create": "2015/09/02"
+}
+
+###customizing date detection
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "dynamic_date_formats": ["MM/dd/yyyy"]
+    }
+  }
+}
+
+PUT my_index/my_type/1
+{
+  "create_date": "09/25/2015"
+}
+
+####number dynamic mapping ####
+
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "numeric_detection": true
+    }
+  }
+}
+
+PUT my_index/my_type/1
+{
+  "my_float":   "1.0", 
+  "my_integer": "1" 
+}
+

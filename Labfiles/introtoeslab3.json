@@ -1,0 +1,265 @@
+
+#############Lab 3 #################################### Data importation module 3
+
+##Check the cluster health
+curl 'localhost:9200/_cat/health?v'
+
+##List the nodes in our cluster
+curl 'localhost:9200/_cat/nodes?v'
+
+##List the indices in the cluster
+curl 'localhost:9200/_cat/indices?v'
+
+##Create an Index
+curl -XPUT 'localhost:9200/customer?pretty'
+curl 'localhost:9200/_cat/indices?v'
+
+##A possible response
+health index    pri rep docs.count docs.deleted store.size pri.store.size
+yellow customer   5   1          0            0       495b           495b
+
+
+##Index and Query a document
+curl -XPUT 'localhost:9200/customer/external/1?pretty' -d '
+{
+  "name": "John Doe"
+}'
+
+curl -XGET 'localhost:9200/customer/external/1?pretty'
+
+##Delete an Index
+curl -XDELETE 'localhost:9200/customer?pretty'
+curl 'localhost:9200/_cat/indices?v'
+
+curl -XPUT 'localhost:9200/customer'
+curl -XPUT 'localhost:9200/customer/external/1' -d '
+{
+  "name": "John Doe"
+}'
+curl 'localhost:9200/customer/external/1'
+curl -XDELETE 'localhost:9200/customer'
+
+curl -X<REST Verb> <Node>:<Port>/<Index>/<Type>/<ID>
+
+##Modifying your Data
+
+curl -XPUT 'localhost:9200/customer/external/1?pretty' -d '
+{
+  "name": "John Doe"
+}'
+
+curl -XPUT 'localhost:9200/customer/external/1?pretty' -d '
+{
+  "name": "Jane Doe"
+}'
+
+curl -XPUT 'localhost:9200/customer/external/2?pretty' -d '
+{
+  "name": "Jane Doe"
+}'
+
+curl -XPOST 'localhost:9200/customer/external?pretty' -d '
+{
+  "name": "Jane Doe"
+}'
+
+##Updateing Documents
+
+curl -XPOST 'localhost:9200/customer/external/1/_update?pretty' -d '
+{
+  "doc": { "name": "Jane Doe" }
+}'
+
+curl -XPOST 'localhost:9200/customer/external/1/_update?pretty' -d '
+{
+  "doc": { "name": "Jane Doe", "age": 20 }
+}'
+
+curl -XPOST 'localhost:9200/customer/external/1/_update?pretty' -d '
+{
+  "script" : "ctx._source.age += 5"
+}'
+
+curl -XDELETE 'localhost:9200/customer/external/2?pretty'
+
+##Batch Processing
+curl -XPOST 'localhost:9200/customer/external/_bulk?pretty' -d '
+{"index":{"_id":"1"}}
+{"name": "John Doe" }
+{"index":{"_id":"2"}}
+{"name": "Jane Doe" }
+'
+
+curl -XPOST 'localhost:9200/customer/external/_bulk?pretty' -d '
+{"update":{"_id":"1"}}
+{"doc": { "name": "John Doe becomes Jane Doe" } }
+{"delete":{"_id":"2"}}
+'
+
+##Exploring your Data
+
+Download this....https://github.com/bly2k/files/blob/master/accounts.zip?raw=true
+
+curl -XPOST 'localhost:9200/bank/account/_bulk?pretty' --data-binary "@accounts.json"
+curl 'localhost:9200/_cat/indices?v'
+
+##The Search API
+
+curl 'localhost:9200/bank/_search?q=*&pretty'
+
+curl -XPOST 'localhost:9200/bank/_search?pretty' -d '
+{
+  "query": { "match_all": {} }
+}'
+
+$ curl -XPUT 'http://localhost:9200/twitter/tweet/1' -d '{
+    "user" : "kimchy",
+    "post_date" : "2009-11-15T14:12:12",
+    "message" : "trying out Elasticsearch"
+}'
+
+curl -XPUT 'localhost:9200/twitter/tweet/1?version=2' -d '{
+    "message" : "elasticsearch now has versioning support, double cool!"
+}'
+
+$ curl -XPUT 'http://localhost:9200/twitter/tweet/1?op_type=create' -d '{
+    "user" : "kimchy",
+    "post_date" : "2009-11-15T14:12:12",
+    "message" : "trying out Elasticsearch"
+}'
+
+#Operation type
+$ curl -XPUT 'http://localhost:9200/twitter/tweet/1/_create' -d '{
+    "user" : "kimchy",
+    "post_date" : "2009-11-15T14:12:12",
+    "message" : "trying out Elasticsearch"
+}'
+
+$ curl -XPOST 'http://localhost:9200/twitter/tweet/' -d '{
+    "user" : "kimchy",
+    "post_date" : "2009-11-15T14:12:12",
+    "message" : "trying out Elasticsearch"
+}'
+
+### versioning 
+$ curl -XPOST 'http://localhost:9200/twitter/tweet/' -d '{
+    "user" : "kimchy",
+    "post_date" : "2009-11-15T14:12:12",
+    "message" : "trying out Elasticsearch"
+}'
+
+{
+    "_index" : "twitter",
+    "_type" : "tweet",
+    "_id" : "6a8ca01c-7896-48e9-81cc-9f70661fcb32",
+    "_version" : 1,
+    "created" : true
+}
+
+#### routing
+
+$ curl -XPOST 'http://localhost:9200/twitter/tweet?routing=kimchy' -d '{
+    "user" : "kimchy",
+    "post_date" : "2009-11-15T14:12:12",
+    "message" : "trying out Elasticsearch"
+}'
+
+###parents and children
+
+$ curl -XPUT localhost:9200/blogs/blog_tag/1122?parent=1111 -d '{
+    "tag" : "something"
+}'
+
+### GET API#####
+curl -XGET 'http://localhost:9200/twitter/tweet/1'
+
+curl -XHEAD -i 'http://localhost:9200/twitter/tweet/1'
+
+###source filtering
+curl -XGET 'http://localhost:9200/twitter/tweet/1?_source=false'
+
+curl -XGET 'http://localhost:9200/twitter/tweet/1?_source_include=*.id&_source_exclude=entities'
+
+curl -XGET 'http://localhost:9200/twitter/tweet/1?_source=*.id,retweeted'
+
+curl -XGET 'http://localhost:9200/twitter/tweet/1?fields=title,content'
+
+curl -XGET 'http://localhost:9200/twitter/tweet/1/_source'
+
+curl -XGET 'http://localhost:9200/twitter/tweet/1/_source?_source_include=*.id&_source_exclude=entities'
+
+curl -XHEAD -i 'http://localhost:9200/twitter/tweet/1/_source'
+
+curl -XGET 'http://localhost:9200/twitter/tweet/1?routing=kimchy'
+
+######Delete API#########
+
+$ curl -XDELETE 'http://localhost:9200/twitter/tweet/1'
+
+$ curl -XDELETE 'http://localhost:9200/twitter/tweet/1?routing=kimchy'
+
+###Update API
+
+curl -XPUT localhost:9200/test/type1/1 -d '{
+    "counter" : 1,
+    "tags" : ["red"]
+}'
+
+curl -XPOST 'localhost:9200/test/type1/1/_update' -d '{
+    "script" : {
+        "inline": "ctx._source.counter += count",
+        "params" : {
+            "count" : 4
+        }
+    }
+}'
+
+curl -XPOST 'localhost:9200/test/type1/1/_update' -d '{
+    "script" : {
+        "inline": "ctx._source.tags += tag",
+        "params" : {
+            "tag" : "blue"
+        }
+    }
+}'
+
+curl -XPOST 'localhost:9200/test/type1/1/_update' -d '{
+    "script" : "ctx._source.name_of_new_field = \"value_of_new_field\""
+}'
+
+curl -XPOST 'localhost:9200/test/type1/1/_update' -d '{
+    "script" : "ctx._source.remove(\"name_of_field\")"
+}'
+
+curl -XPOST 'localhost:9200/test/type1/1/_update' -d '{
+    "script" : {
+        "inline": "ctx._source.tags.contains(tag) ? ctx.op = \"delete\" : ctx.op = \"none\"",
+        "params" : {
+            "tag" : "blue"
+        }
+    }
+}'
+
+###partial updates####
+
+curl -XPOST 'localhost:9200/test/type1/1/_update' -d '{
+    "doc" : {
+        "name" : "new_name"
+    }
+}'
+
+####upserts
+
+
+curl -XPOST 'localhost:9200/test/type1/1/_update' -d '{
+    "script" : {
+        "inline": "ctx._source.counter += count",
+        "params" : {
+            "count" : 4
+        }
+    },
+    "upsert" : {
+        "counter" : 1
+    }
+}'
+

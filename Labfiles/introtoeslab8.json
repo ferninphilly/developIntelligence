@@ -1,0 +1,32 @@
+#######LAB 8 ############################ suggestors
+
+
+
+curl -XPOST 'localhost:9200/_suggest' -d '{
+  "my-suggestion" : {
+    "text" : "the amsterdma meetpu",
+    "term" : {
+      "field" : "body"
+    }
+  }
+}'
+
+
+
+
+
+curl -s -XPOST 'localhost:9200/_search' -d '{
+  "size": 0,
+  "suggest" : {
+    "my-title-suggestions-1" : {
+      "text" : "devloping distibutd saerch engies",
+      "term" : {
+        "size" : 3,
+        "field" : "title"
+      }
+    }
+  }
+}'
+
+
+
